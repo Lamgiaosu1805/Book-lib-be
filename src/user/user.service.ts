@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { User } from './user.schema';
 import { Model } from 'mongoose';
@@ -37,12 +41,31 @@ export class UserService {
   async login(email: string, password: string) {
     const user = await this.userModel.findOne({ email });
 
-    if (!user) throw new Error('Không tìm thấy user');
+    if (!user) {
+      throw new UnauthorizedException('Không tìm thấy user');
+    }
 
     const match = await bcrypt.compare(password, user.password);
 
-    if (!match) throw new Error('Sai mật khẩu');
+    if (!match) {
+      throw new UnauthorizedException('Sai mật khẩu');
+    }
 
-    return jwt.sign({ id: user._id, role: 'user' }, process.env.JWT_SECRET);
+    const token = jwt.sign(
+      { id: user._id, role: 'user' },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' },
+    );
+
+    return {
+      message: 'Đăng nhập thành công',
+      data: {
+        accessToken: token,
+        user: {
+          id: user._id,
+          email: user.email,
+        },
+      },
+    };
   }
 }

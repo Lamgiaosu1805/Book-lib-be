@@ -6,7 +6,13 @@ export class AuthGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const req = context.switchToHttp().getRequest();
 
-    const token = req.headers.authorization;
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) return false;
+
+    const token = authHeader.split(' ')[1];
+
+    if (!token) return false;
 
     if (!token) return false;
 

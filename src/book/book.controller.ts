@@ -10,14 +10,14 @@ import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { UseGuards } from '@nestjs/common';
 import { BookService } from './book.service';
-import { AuthGuard } from 'src/auth/auth.guard';
+import { AdminGuard } from 'src/auth/admin.guard';
 
 @Controller('books')
 export class BookController {
   constructor(private readonly bookService: BookService) {} // 👈 INJECT
 
   @Post('upload')
-  @UseGuards(AuthGuard)
+  @UseGuards(AdminGuard)
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
