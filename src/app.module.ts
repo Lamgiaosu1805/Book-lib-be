@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 
@@ -8,6 +8,8 @@ import { AppService } from './app.service';
 // import module bạn sẽ tạo
 import { AdminModule } from './admin/admin.module';
 import { BookModule } from './book/book.module';
+import { UserModule } from './user/user.module';
+import { LoggerMiddleware } from './logger/logger.middleware';
 
 @Module({
   imports: [
@@ -22,8 +24,13 @@ import { BookModule } from './book/book.module';
     // module của bạn
     AdminModule,
     BookModule,
+    UserModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(LoggerMiddleware).forRoutes('*');
+  }
+}
