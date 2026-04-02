@@ -12,21 +12,49 @@ export class BookService {
   ) {}
 
   async create(filePath: string, title: string, isFree: boolean) {
+    // Chuyển đổi isFree về dạng boolean nếu nhận từ form-data (string)
+    const isFreeBool = String(isFree) === 'true';
     const previewPath = filePath.replace('/full/', '/preview/');
 
-    // tạo preview trang 1
+    // Tạo preview trang 1 (Đảm bảo folder /preview/ đã tồn tại)
     exec(`pdftk ${filePath} cat 1 output ${previewPath}`);
 
     return this.bookModel.create({
       title,
-      isFree,
+      isFree: isFreeBool,
       filePath,
       previewPath,
     });
   }
 
-  async findAll() {
-    return this.bookModel.find();
+  // API Lấy danh sách có phân trang và ẩn đường dẫn file
+  async findAll(page: number = 1, limit: number = 10) {
+    const skip = (page - 1) * limit;
+
+    // Chạy song song: Đếm tổng số và Lấy dữ liệu trang hiện tại
+    const [data, totalItems] = await Promise.all([
+      this.bookModel
+        .find()
+        .select('-filePath -previewPath') // ❌ Không trả về đường dẫn file
+        .sort({ createdAt: -1 }) // Sách mới nhất lên đầu
+        .skip(skip)
+        .limit(limit)
+        .exec(),
+      this.bookModel.countDocuments(),
+    ]);
+
+    const totalPages = Math.ceil(totalItems / limit);
+
+    return {
+      items: data,
+      meta: {
+        totalItems,
+        itemCount: data.length,
+        itemsPerPage: limit,
+        totalPages,
+        currentPage: page,
+      },
+    };
   }
 
   async findById(id: string) {
