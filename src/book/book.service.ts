@@ -17,7 +17,17 @@ export class BookService {
     const previewPath = filePath.replace('/full/', '/preview/');
 
     // Tạo preview trang 1 (Đảm bảo folder /preview/ đã tồn tại)
-    exec(`pdftk ${filePath} cat 1 output ${previewPath}`);
+    exec(
+      `pdftk ${filePath} cat 1 output ${previewPath}`,
+      (err, stdout, stderr) => {
+        if (err) {
+          console.error('PDFTK ERROR:', err);
+          return;
+        }
+
+        console.log('Preview created:', previewPath);
+      },
+    );
 
     return this.bookModel.create({
       title,
