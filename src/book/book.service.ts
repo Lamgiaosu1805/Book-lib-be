@@ -12,6 +12,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
+import { User } from 'src/user/user.schema';
 
 const execPromise = promisify(exec);
 
@@ -19,7 +20,10 @@ const execPromise = promisify(exec);
 export class BookService {
   private readonly logger = new Logger(BookService.name);
 
-  constructor(@InjectModel(Book.name) private bookModel: Model<Book>) {}
+  constructor(
+    @InjectModel(Book.name) private bookModel: Model<Book>,
+    @InjectModel(User.name) private userModel: Model<User>,
+  ) {}
 
   // ✅ Hàm create nhận đủ 8 tham số
   async create(
@@ -109,12 +113,27 @@ export class BookService {
     return new StreamableFile(fs.createReadStream(book.previewPath));
   }
 
-  async getFullBookStream(id: string, user: any): Promise<StreamableFile> {
+  async getFullBookStream(id: string, userReq: any): Promise<StreamableFile> {
     const book = await this.bookModel.findById(id);
     if (!book) throw new NotFoundException('Sách không tồn tại');
-    const isAdmin = user?.role === 'admin';
-    const targetPath =
-      book.isFree || isAdmin ? book.filePath : book.previewPath;
+
+    // Dùng userModel đã được inject để lấy thông tin
+    const user = await this.userModel.findById(userReq.id);
+
+    const isAdmin = userReq?.role === 'admin';
+    const hasPurchased = user?.purchasedBooks?.includes(id as any);
+
+    let targetPath = book.previewPath;
+
+    // Nếu sách Miễn phí, hoặc là Admin, hoặc ĐÃ MUA -> Xem FULL
+    if (book.isFree || isAdmin || hasPurchased) {
+      targetPath = book.filePath;
+    }
+
+    if (!fs.existsSync(targetPath)) {
+      throw new NotFoundException('File không tồn tại trên hệ thống');
+    }
+
     return new StreamableFile(fs.createReadStream(targetPath));
   }
 }

@@ -99,4 +99,30 @@ export class UserService {
     }
     return { message: 'Đã khôi phục tài khoản' };
   }
+  async getMyLibrary(userId: string) {
+    const user = await this.userModel
+      .findById(userId)
+      .populate('purchasedBooks')
+      .exec();
+    if (!user) throw new NotFoundException('Không tìm thấy người dùng');
+    return user.purchasedBooks;
+  }
+
+  // ✅ API CHO USER: Mua sách / Thêm sách vào tủ
+  async addToLibrary(userId: string, bookId: string) {
+    const user = await this.userModel.findById(userId);
+    if (!user) throw new NotFoundException('Không tìm thấy người dùng');
+
+    // Kiểm tra xem đã có sách trong tủ chưa
+    if (user.purchasedBooks.includes(bookId as any)) {
+      throw new BadRequestException(
+        'Cuốn sách này đã có trong tủ sách của bạn!',
+      );
+    }
+
+    user.purchasedBooks.push(bookId as any);
+    await user.save();
+
+    return { message: 'Đã thêm sách vào tủ sách của bạn thành công!' };
+  }
 }

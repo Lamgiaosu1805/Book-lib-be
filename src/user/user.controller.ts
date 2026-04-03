@@ -7,10 +7,12 @@ import {
   Param,
   Patch,
   UseGuards,
+  Req,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { RegisterDto } from './dto/register.dto';
 import { AdminGuard } from 'src/auth/admin.guard';
+import { AuthGuard } from 'src/auth/auth.guard';
 
 @Controller('user')
 export class UserController {
@@ -43,5 +45,18 @@ export class UserController {
   @Patch('admin/:id/restore')
   restoreUser(@Param('id') id: string) {
     return this.userService.restore(id);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('library')
+  getMyLibrary(@Req() req: any) {
+    return this.userService.getMyLibrary(req.user.id);
+  }
+
+  // ✅ Thêm vào tủ sách (Truyền ID sách vào URL)
+  @UseGuards(AuthGuard)
+  @Post('library/add/:bookId')
+  addToLibrary(@Req() req: any, @Param('bookId') bookId: string) {
+    return this.userService.addToLibrary(req.user.id, bookId);
   }
 }

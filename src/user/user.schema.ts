@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import mongoose, { Document } from 'mongoose';
 
 @Schema({ timestamps: true })
 export class User extends Document {
@@ -9,9 +9,15 @@ export class User extends Document {
   @Prop({ required: true })
   password: string;
 
-  // ✅ THÊM TRƯỜNG XOÁ MỀM
   @Prop({ default: false })
   isDeleted: boolean;
+
+  // ✅ THÊM KHO SÁCH CÁ NHÂN
+  @Prop({
+    type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Book' }],
+    default: [],
+  })
+  purchasedBooks: string[];
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
