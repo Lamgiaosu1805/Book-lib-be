@@ -67,6 +67,7 @@ export class BookController {
   @UseGuards(AuthGuard)
   @Get(':id/preview')
   @Header('Content-Type', 'application/pdf')
+  @Header('Cache-Control', 'public, max-age=86400')
   async getPreview(@Param('id') id: string): Promise<StreamableFile> {
     return this.bookService.getPreviewStream(id);
   }
