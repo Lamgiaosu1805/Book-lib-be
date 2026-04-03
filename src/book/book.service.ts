@@ -13,7 +13,6 @@ import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
 
-// Biến exec thành Promise để dùng được async/await
 const execPromise = promisify(exec);
 
 @Injectable()
@@ -25,11 +24,14 @@ export class BookService {
     private bookModel: Model<Book>,
   ) {}
 
-  async create(filePath: string, title: string, isFree: any) {
+  async create(filePath: string, title: string, isFree: any, price: any = 0) {
     const isFreeBool = String(isFree) === 'true';
 
-    const absoluteFullContentPath = path.resolve(filePath);
+    // Xử lý giá tiền
+    const parsedPrice = parseInt(price, 10);
+    const finalPrice = isNaN(parsedPrice) ? 0 : parsedPrice;
 
+    const absoluteFullContentPath = path.resolve(filePath);
     const previewPath = absoluteFullContentPath.replace(
       `${path.sep}full${path.sep}`,
       `${path.sep}preview${path.sep}`,
@@ -43,9 +45,7 @@ export class BookService {
     try {
       await execPromise(
         `pdftk "${absoluteFullContentPath}" cat 1 output "${previewPath}"`,
-        {
-          env: process.env,
-        },
+        { env: process.env },
       );
       this.logger.log(`✅ Đã tạo preview thành công tại: ${previewPath}`);
     } catch (err) {
@@ -58,6 +58,7 @@ export class BookService {
     return this.bookModel.create({
       title,
       isFree: isFreeBool,
+      price: isFreeBool ? 0 : finalPrice, // Nếu miễn phí thì ép giá về 0
       filePath: absoluteFullContentPath,
       previewPath: previewPath,
     });
@@ -95,11 +96,7 @@ export class BookService {
     return this.bookModel.findById(id);
   }
 
-  // =======================================================
-  // ✅ LOGIC MỚI: Lấy luồng file (Stream) cho ảnh demo (Trang 1)
-  // =======================================================
   async getPreviewStream(id: string): Promise<StreamableFile> {
-    // 1. Tìm thông tin sách trong DB
     const book = await this.bookModel.findById(id);
     if (!book || !book.previewPath) {
       throw new NotFoundException(
@@ -107,7 +104,6 @@ export class BookService {
       );
     }
 
-    // 2. Kiểm tra xem file PDF preview có thực sự nằm trên ổ cứng không
     if (!fs.existsSync(book.previewPath)) {
       this.logger.error(`File không tồn tại ở đường dẫn: ${book.previewPath}`);
       throw new NotFoundException(
@@ -115,10 +111,7 @@ export class BookService {
       );
     }
 
-    // 3. Đọc file dưới dạng luồng dữ liệu (Stream) để tối ưu bộ nhớ RAM cho server
     const fileStream = fs.createReadStream(book.previewPath);
-
-    // 4. Bọc vào StreamableFile của NestJS để Controller dễ dàng trả về
     return new StreamableFile(fileStream);
   }
 }

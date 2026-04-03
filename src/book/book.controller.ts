@@ -55,17 +55,19 @@ export class BookController {
     }),
   )
   upload(@UploadedFile() file, @Body() body) {
-    return this.bookService.create(file.path, body.title, body.isFree);
+    // Truyền thêm body.price vào service
+    return this.bookService.create(
+      file.path,
+      body.title,
+      body.isFree,
+      body.price,
+    );
   }
 
-  // =======================================================
-  // ✅ API TRẢ VỀ ẢNH DEMO (GỌI LOGIC TỪ SERVICE)
-  // =======================================================
   @UseGuards(AuthGuard)
   @Get(':id/preview')
-  @Header('Content-Type', 'application/pdf') // Ép trình duyệt hiểu đây là file PDF
+  @Header('Content-Type', 'application/pdf')
   async getPreview(@Param('id') id: string): Promise<StreamableFile> {
-    // Controller hoàn toàn sạch bóng logic tìm file, chỉ làm nhiệm vụ gọi Service
     return this.bookService.getPreviewStream(id);
   }
 }
