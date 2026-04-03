@@ -10,6 +10,7 @@ import {
   Param,
   Header,
   StreamableFile,
+  Req,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -55,7 +56,6 @@ export class BookController {
     }),
   )
   upload(@UploadedFile() file, @Body() body) {
-    // Truyền thêm body.price vào service
     return this.bookService.create(
       file.path,
       body.title,
@@ -69,5 +69,22 @@ export class BookController {
   @Header('Content-Type', 'application/pdf')
   async getPreview(@Param('id') id: string): Promise<StreamableFile> {
     return this.bookService.getPreviewStream(id);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get(':id/view')
+  @Header('Content-Type', 'application/pdf')
+  async viewBook(
+    @Param('id') id: string,
+    @Req() req: any,
+  ): Promise<StreamableFile> {
+    return this.bookService.getFullBookStream(id, req.user);
+  }
+
+  // ✅ API MỚI: Lấy thông tin sách (JSON) - Phải đặt dưới cùng để không dính route conflict
+  @UseGuards(AuthGuard)
+  @Get(':id')
+  async getBookDetails(@Param('id') id: string) {
+    return this.bookService.getBookDetails(id);
   }
 }

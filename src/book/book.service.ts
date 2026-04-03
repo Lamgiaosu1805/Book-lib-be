@@ -26,8 +26,6 @@ export class BookService {
 
   async create(filePath: string, title: string, isFree: any, price: any = 0) {
     const isFreeBool = String(isFree) === 'true';
-
-    // Xử lý giá tiền
     const parsedPrice = parseInt(price, 10);
     const finalPrice = isNaN(parsedPrice) ? 0 : parsedPrice;
 
@@ -58,7 +56,7 @@ export class BookService {
     return this.bookModel.create({
       title,
       isFree: isFreeBool,
-      price: isFreeBool ? 0 : finalPrice, // Nếu miễn phí thì ép giá về 0
+      price: isFreeBool ? 0 : finalPrice,
       filePath: absoluteFullContentPath,
       previewPath: previewPath,
     });
@@ -96,22 +94,51 @@ export class BookService {
     return this.bookModel.findById(id);
   }
 
+  // ✅ API MỚI: Lấy thông tin JSON của 1 cuốn sách
+  async getBookDetails(id: string) {
+    const book = await this.bookModel
+      .findById(id)
+      .select('-filePath -previewPath') // Ẩn đường dẫn file gốc
+      .exec();
+
+    if (!book) {
+      throw new NotFoundException('Sách không tồn tại');
+    }
+    return book;
+  }
+
   async getPreviewStream(id: string): Promise<StreamableFile> {
     const book = await this.bookModel.findById(id);
     if (!book || !book.previewPath) {
-      throw new NotFoundException(
-        'Không tìm thấy dữ liệu hoặc sách chưa có bản xem trước',
-      );
+      throw new NotFoundException('Sách chưa có bản xem trước');
     }
-
     if (!fs.existsSync(book.previewPath)) {
-      this.logger.error(`File không tồn tại ở đường dẫn: ${book.previewPath}`);
-      throw new NotFoundException(
-        'File xem trước đã bị xóa hoặc di chuyển khỏi máy chủ',
-      );
+      throw new NotFoundException('File xem trước không tồn tại trên hệ thống');
+    }
+    return new StreamableFile(fs.createReadStream(book.previewPath));
+  }
+
+  async getFullBookStream(id: string, user: any): Promise<StreamableFile> {
+    const book = await this.bookModel.findById(id);
+    if (!book) {
+      throw new NotFoundException('Sách không tồn tại');
     }
 
-    const fileStream = fs.createReadStream(book.previewPath);
-    return new StreamableFile(fileStream);
+    const isAdmin = user?.role === 'admin';
+    const hasPurchased = user?.purchasedBooks?.includes(id);
+
+    let targetPath = book.previewPath;
+
+    // Nếu MIỄN PHÍ, ADMIN, hoặc ĐÃ MUA -> Xem full
+    if (book.isFree || isAdmin || hasPurchased) {
+      targetPath = book.filePath;
+    }
+
+    if (!fs.existsSync(targetPath)) {
+      this.logger.error(`File không tồn tại ở đường dẫn: ${targetPath}`);
+      throw new NotFoundException('File không tồn tại trên hệ thống');
+    }
+
+    return new StreamableFile(fs.createReadStream(targetPath));
   }
 }
