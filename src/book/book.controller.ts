@@ -39,50 +39,51 @@ export class BookController {
     FileInterceptor('file', {
       storage: diskStorage({
         destination: (req, file, cb) => {
-          const storagePath = process.env.FILE_STORAGE_PATH || './uploads';
-          const fullPath = join(storagePath, 'full');
-
-          if (!fs.existsSync(fullPath)) {
+          const fullPath = join(
+            process.env.FILE_STORAGE_PATH || './uploads',
+            'full',
+          );
+          if (!fs.existsSync(fullPath))
             fs.mkdirSync(fullPath, { recursive: true });
-          }
           cb(null, fullPath);
         },
         filename: (req, file, cb) => {
-          const uniqueSuffix =
-            Date.now() + '-' + Math.round(Math.random() * 1e9);
-          cb(null, uniqueSuffix + extname(file.originalname));
+          cb(
+            null,
+            `${Date.now()}-${Math.round(Math.random() * 1e9)}${extname(file.originalname)}`,
+          );
         },
       }),
     }),
   )
-  upload(@UploadedFile() file, @Body() body) {
+  upload(@UploadedFile() file: any, @Body() body: any) {
+    // ✅ Truyền ĐÚNG và ĐỦ 8 tham số cho Service
     return this.bookService.create(
       file.path,
       body.title,
       body.isFree,
       body.price,
+      body.author,
+      body.category,
+      body.publishedYear,
+      body.description,
     );
   }
 
   @UseGuards(AuthGuard)
   @Get(':id/preview')
   @Header('Content-Type', 'application/pdf')
-  @Header('Cache-Control', 'public, max-age=86400')
-  async getPreview(@Param('id') id: string): Promise<StreamableFile> {
+  async getPreview(@Param('id') id: string) {
     return this.bookService.getPreviewStream(id);
   }
 
   @UseGuards(AuthGuard)
   @Get(':id/view')
   @Header('Content-Type', 'application/pdf')
-  async viewBook(
-    @Param('id') id: string,
-    @Req() req: any,
-  ): Promise<StreamableFile> {
+  async viewBook(@Param('id') id: string, @Req() req: any) {
     return this.bookService.getFullBookStream(id, req.user);
   }
 
-  // ✅ API MỚI: Lấy thông tin sách (JSON) - Phải đặt dưới cùng để không dính route conflict
   @UseGuards(AuthGuard)
   @Get(':id')
   async getBookDetails(@Param('id') id: string) {

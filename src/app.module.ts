@@ -10,6 +10,7 @@ import { AdminModule } from './admin/admin.module';
 import { BookModule } from './book/book.module';
 import { UserModule } from './user/user.module';
 import { LoggerMiddleware } from './logger/logger.middleware';
+import { CategoryModule } from './category/category.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { LoggerMiddleware } from './logger/logger.middleware';
     AdminModule,
     BookModule,
     UserModule,
+    CategoryModule,
   ],
   controllers: [AppController],
   providers: [AppService],

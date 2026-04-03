@@ -19,15 +19,23 @@ const execPromise = promisify(exec);
 export class BookService {
   private readonly logger = new Logger(BookService.name);
 
-  constructor(
-    @InjectModel(Book.name)
-    private bookModel: Model<Book>,
-  ) {}
+  constructor(@InjectModel(Book.name) private bookModel: Model<Book>) {}
 
-  async create(filePath: string, title: string, isFree: any, price: any = 0) {
+  // ✅ Hàm create nhận đủ 8 tham số
+  async create(
+    filePath: string,
+    title: string,
+    isFree: any,
+    price: any = 0,
+    author: string,
+    category: string,
+    publishedYear: any,
+    description: string,
+  ) {
     const isFreeBool = String(isFree) === 'true';
     const parsedPrice = parseInt(price, 10);
     const finalPrice = isNaN(parsedPrice) ? 0 : parsedPrice;
+    const finalYear = parseInt(publishedYear, 10) || new Date().getFullYear();
 
     const absoluteFullContentPath = path.resolve(filePath);
     const previewPath = absoluteFullContentPath.replace(
@@ -43,18 +51,19 @@ export class BookService {
     try {
       await execPromise(
         `pdftk "${absoluteFullContentPath}" cat 1 output "${previewPath}"`,
-        { env: process.env },
       );
-      this.logger.log(`✅ Đã tạo preview thành công tại: ${previewPath}`);
     } catch (err) {
       this.logger.error(`❌ PDFTK ERROR: ${err.message}`);
-      throw new InternalServerErrorException(
-        'Không thể tạo bản xem trước. Hãy đảm bảo macOS đã cài: brew install pdftk-java',
-      );
+      throw new InternalServerErrorException('Lỗi tạo bản xem trước PDF');
     }
 
+    // Lưu xuống MongoDB
     return this.bookModel.create({
       title,
+      author: author || 'Chưa cập nhật',
+      category: category || 'Chưa cập nhật',
+      publishedYear: finalYear,
+      description: description || '',
       isFree: isFreeBool,
       price: isFreeBool ? 0 : finalPrice,
       filePath: absoluteFullContentPath,
@@ -64,7 +73,6 @@ export class BookService {
 
   async findAll(page: number = 1, limit: number = 10) {
     const skip = (page - 1) * limit;
-
     const [data, totalItems] = await Promise.all([
       this.bookModel
         .find()
@@ -75,70 +83,38 @@ export class BookService {
         .exec(),
       this.bookModel.countDocuments(),
     ]);
-
-    const totalPages = Math.ceil(totalItems / limit);
-
     return {
       items: data,
       meta: {
         totalItems,
-        itemCount: data.length,
-        itemsPerPage: limit,
-        totalPages,
+        totalPages: Math.ceil(totalItems / limit),
         currentPage: page,
       },
     };
   }
 
-  async findById(id: string) {
-    return this.bookModel.findById(id);
-  }
-
-  // ✅ API MỚI: Lấy thông tin JSON của 1 cuốn sách
   async getBookDetails(id: string) {
     const book = await this.bookModel
       .findById(id)
-      .select('-filePath -previewPath') // Ẩn đường dẫn file gốc
+      .select('-filePath -previewPath')
       .exec();
-
-    if (!book) {
-      throw new NotFoundException('Sách không tồn tại');
-    }
+    if (!book) throw new NotFoundException('Sách không tồn tại');
     return book;
   }
 
   async getPreviewStream(id: string): Promise<StreamableFile> {
     const book = await this.bookModel.findById(id);
-    if (!book || !book.previewPath) {
-      throw new NotFoundException('Sách chưa có bản xem trước');
-    }
-    if (!fs.existsSync(book.previewPath)) {
-      throw new NotFoundException('File xem trước không tồn tại trên hệ thống');
-    }
+    if (!book || !fs.existsSync(book.previewPath))
+      throw new NotFoundException('File không tồn tại');
     return new StreamableFile(fs.createReadStream(book.previewPath));
   }
 
   async getFullBookStream(id: string, user: any): Promise<StreamableFile> {
     const book = await this.bookModel.findById(id);
-    if (!book) {
-      throw new NotFoundException('Sách không tồn tại');
-    }
-
+    if (!book) throw new NotFoundException('Sách không tồn tại');
     const isAdmin = user?.role === 'admin';
-    const hasPurchased = user?.purchasedBooks?.includes(id);
-
-    let targetPath = book.previewPath;
-
-    // Nếu MIỄN PHÍ, ADMIN, hoặc ĐÃ MUA -> Xem full
-    if (book.isFree || isAdmin || hasPurchased) {
-      targetPath = book.filePath;
-    }
-
-    if (!fs.existsSync(targetPath)) {
-      this.logger.error(`File không tồn tại ở đường dẫn: ${targetPath}`);
-      throw new NotFoundException('File không tồn tại trên hệ thống');
-    }
-
+    const targetPath =
+      book.isFree || isAdmin ? book.filePath : book.previewPath;
     return new StreamableFile(fs.createReadStream(targetPath));
   }
 }
