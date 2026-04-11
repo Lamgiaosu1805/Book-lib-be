@@ -1,5 +1,5 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 
 import { AppController } from './app.controller';
@@ -20,7 +20,13 @@ import { CategoryModule } from './category/category.module';
     }),
 
     // kết nối MongoDB
-    MongooseModule.forRoot('mongodb://localhost:27017/library'),
+    MongooseModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => ({
+        uri: configService.get<string>('MONGO_URI'),
+      }),
+    }),
 
     // module của bạn
     AdminModule,
