@@ -114,11 +114,10 @@ export class UserService {
       if (user.isDeleted) {
         throw new UnauthorizedException('Tài khoản đã bị đình chỉ');
       }
-      if (!user.googleId) {
-        user.googleId = profile.googleId;
-        if (!user.displayName) user.displayName = profile.displayName;
-        await user.save();
-      }
+      let needSave = false;
+      if (!user.googleId) { user.googleId = profile.googleId; needSave = true; }
+      if (!user.displayName && profile.displayName) { user.displayName = profile.displayName; needSave = true; }
+      if (needSave) await user.save();
     }
 
     return jwt.sign(
