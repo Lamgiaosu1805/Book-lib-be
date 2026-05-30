@@ -99,6 +99,33 @@ export class UserService {
     }
     return { message: 'Đã khôi phục tài khoản' };
   }
+  async loginWithGoogle(profile: { email: string; googleId: string }): Promise<string> {
+    let user = await this.userModel.findOne({ email: profile.email });
+
+    if (!user) {
+      const randomPassword = await bcrypt.hash(profile.googleId + Date.now(), 10);
+      user = await this.userModel.create({
+        email: profile.email,
+        password: randomPassword,
+        googleId: profile.googleId,
+      });
+    } else {
+      if (user.isDeleted) {
+        throw new UnauthorizedException('Tài khoản đã bị đình chỉ');
+      }
+      if (!user.googleId) {
+        user.googleId = profile.googleId;
+        await user.save();
+      }
+    }
+
+    return jwt.sign(
+      { id: user._id, role: 'user' },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' },
+    );
+  }
+
   async getProfile(userId: string) {
     const user = await this.userModel.findById(userId).select('-password').exec();
     if (!user) throw new NotFoundException('Không tìm thấy người dùng');

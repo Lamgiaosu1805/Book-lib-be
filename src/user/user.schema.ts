@@ -12,6 +12,9 @@ export class User extends Document {
   @Prop({ default: false })
   isDeleted: boolean;
 
+  @Prop({ default: null })
+  googleId: string;
+
   // ✅ THÊM KHO SÁCH CÁ NHÂN
   @Prop({
     type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Book' }],
