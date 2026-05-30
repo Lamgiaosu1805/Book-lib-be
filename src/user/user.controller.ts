@@ -13,10 +13,14 @@ import { UserService } from './user.service';
 import { RegisterDto } from './dto/register.dto';
 import { AdminGuard } from 'src/auth/admin.guard';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { AuditLogService } from 'src/audit-log/audit-log.service';
 
 @Controller('user')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly auditLogService: AuditLogService,
+  ) {}
 
   @Post('register')
   register(@Body() body: RegisterDto) {
@@ -36,15 +40,26 @@ export class UserController {
 
   @UseGuards(AdminGuard)
   @Delete('admin/:id')
-  deleteUser(@Param('id') id: string) {
-    return this.userService.remove(id);
+  async deleteUser(@Param('id') id: string, @Req() req: any) {
+    const user = await this.userService.findById(id);
+    const result = await this.userService.remove(id);
+    await this.auditLogService.log(
+      { id: req.user.id, name: req.user.name },
+      'Đình chỉ tài khoản', 'Người dùng', id, user?.email || id,
+    );
+    return result;
   }
 
-  // ✅ API MỚI: Khôi phục người dùng
   @UseGuards(AdminGuard)
   @Patch('admin/:id/restore')
-  restoreUser(@Param('id') id: string) {
-    return this.userService.restore(id);
+  async restoreUser(@Param('id') id: string, @Req() req: any) {
+    const user = await this.userService.findById(id);
+    const result = await this.userService.restore(id);
+    await this.auditLogService.log(
+      { id: req.user.id, name: req.user.name },
+      'Khôi phục tài khoản', 'Người dùng', id, user?.email || id,
+    );
+    return result;
   }
 
   @UseGuards(AuthGuard)

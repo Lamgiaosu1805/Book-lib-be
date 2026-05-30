@@ -130,6 +130,10 @@ export class UserService {
     );
   }
 
+  async findById(userId: string) {
+    return this.userModel.findById(userId).select('-password').exec();
+  }
+
   async getProfile(userId: string) {
     const user = await this.userModel.findById(userId).select('-password').exec();
     if (!user) throw new NotFoundException('Không tìm thấy người dùng');

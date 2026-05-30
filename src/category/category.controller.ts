@@ -1,21 +1,16 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Delete,
-  Body,
-  Param,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param, UseGuards, Req } from '@nestjs/common';
 import { CategoryService } from './category.service';
-import { AuthGuard } from 'src/auth/auth.guard'; // Sửa lại đường dẫn nếu cần
-import { AdminGuard } from 'src/auth/admin.guard'; // Sửa lại đường dẫn nếu cần
+import { AuthGuard } from 'src/auth/auth.guard';
+import { AdminGuard } from 'src/auth/admin.guard';
+import { AuditLogService } from 'src/audit-log/audit-log.service';
 
 @Controller('categories')
 export class CategoryController {
-  constructor(private readonly categoryService: CategoryService) {}
+  constructor(
+    private readonly categoryService: CategoryService,
+    private readonly auditLogService: AuditLogService,
+  ) {}
 
-  @UseGuards(AuthGuard)
   @Get()
   findAll() {
     return this.categoryService.findAll();
@@ -23,13 +18,24 @@ export class CategoryController {
 
   @UseGuards(AdminGuard)
   @Post()
-  create(@Body('name') name: string) {
-    return this.categoryService.create(name);
+  async create(@Body('name') name: string, @Req() req: any) {
+    const result = await this.categoryService.create(name);
+    await this.auditLogService.log(
+      { id: req.user.id, name: req.user.name },
+      'Thêm danh mục', 'Danh mục', String(result._id), name,
+    );
+    return result;
   }
 
   @UseGuards(AdminGuard)
   @Delete(':id')
-  delete(@Param('id') id: string) {
-    return this.categoryService.delete(id);
+  async delete(@Param('id') id: string, @Req() req: any) {
+    const cat = await this.categoryService.findById(id);
+    const result = await this.categoryService.delete(id);
+    await this.auditLogService.log(
+      { id: req.user.id, name: req.user.name },
+      'Xóa danh mục', 'Danh mục', id, cat?.name || id,
+    );
+    return result;
   }
 }

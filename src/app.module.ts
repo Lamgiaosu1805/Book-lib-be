@@ -12,6 +12,7 @@ import { UserModule } from './user/user.module';
 import { LoggerMiddleware } from './logger/logger.middleware';
 import { CategoryModule } from './category/category.module';
 import { AuthModule } from './auth/auth.module';
+import { AuditLogModule } from './audit-log/audit-log.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { AuthModule } from './auth/auth.module';
     UserModule,
     CategoryModule,
     AuthModule,
+    AuditLogModule,
   ],
   controllers: [AppController],
   providers: [AppService],

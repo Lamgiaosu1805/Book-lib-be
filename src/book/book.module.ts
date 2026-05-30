@@ -4,6 +4,7 @@ import { BookController } from './book.controller';
 import { BookService } from './book.service';
 import { Book, BookSchema } from './book.schema';
 import { User, UserSchema } from '../user/user.schema';
+import { AuditLogModule } from 'src/audit-log/audit-log.module';
 
 @Module({
   imports: [
@@ -11,6 +12,7 @@ import { User, UserSchema } from '../user/user.schema';
       { name: Book.name, schema: BookSchema },
       { name: User.name, schema: UserSchema },
     ]),
+    AuditLogModule,
   ],
   controllers: [BookController],
   providers: [BookService],

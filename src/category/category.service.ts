@@ -22,6 +22,10 @@ export class CategoryService {
     return this.categoryModel.find().sort({ createdAt: -1 }).exec();
   }
 
+  async findById(id: string) {
+    return this.categoryModel.findById(id).exec();
+  }
+
   async delete(id: string) {
     return this.categoryModel.findByIdAndDelete(id);
   }

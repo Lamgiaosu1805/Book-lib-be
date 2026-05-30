@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Admin } from './admin.schema';
 import { Model } from 'mongoose';
@@ -11,29 +15,55 @@ export class AdminService {
     @InjectModel(Admin.name)
     private adminModel: Model<Admin>,
   ) {}
+
   async login(email: string, password: string) {
     const admin = await this.adminModel.findOne({ email });
-
-    if (!admin) {
-      throw new UnauthorizedException('Không tìm thấy admin');
-    }
+    if (!admin) throw new UnauthorizedException('Không tìm thấy tài khoản admin');
 
     const match = await bcrypt.compare(password, admin.password);
+    if (!match) throw new UnauthorizedException('Sai mật khẩu');
 
-    if (!match) {
-      throw new UnauthorizedException('Sai mật khẩu');
-    }
+    const fullName = [admin.saintName, admin.displayName].filter(Boolean).join(' ');
 
     const token = jwt.sign(
-      { id: admin._id, role: 'admin' },
+      { id: admin._id, role: 'admin', name: fullName || admin.email },
       process.env.JWT_SECRET,
     );
 
     return {
-      message: 'Login admin thành công',
+      message: 'Đăng nhập thành công',
+      data: { accessToken: token },
+    };
+  }
+
+  async create(email: string, password: string, displayName: string, saintName: string) {
+    const existed = await this.adminModel.findOne({ email });
+    if (existed) throw new BadRequestException('Email này đã được sử dụng');
+
+    const hash = await bcrypt.hash(password, 10);
+    const admin = await this.adminModel.create({
+      email,
+      password: hash,
+      displayName,
+      saintName,
+    });
+
+    return {
+      message: 'Tạo tài khoản admin thành công',
       data: {
-        accessToken: token,
+        id: admin._id,
+        email: admin.email,
+        displayName: admin.displayName,
+        saintName: admin.saintName,
       },
     };
+  }
+
+  async findAll() {
+    return this.adminModel
+      .find()
+      .select('-password')
+      .sort({ createdAt: -1 })
+      .exec();
   }
 }
