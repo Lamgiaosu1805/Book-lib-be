@@ -17,6 +17,12 @@ export class Admin extends Document {
 
   @Prop({ default: '' })
   saintName: string;
+
+  @Prop({ default: false })
+  isSuperAdmin: boolean;
+
+  @Prop({ default: false })
+  isDeleted: boolean;
 }
 
 export const AdminSchema = SchemaFactory.createForClass(Admin);

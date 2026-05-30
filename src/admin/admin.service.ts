@@ -1,6 +1,8 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -26,7 +28,7 @@ export class AdminService {
     const fullName = [admin.saintName, admin.displayName].filter(Boolean).join(' ');
 
     const token = jwt.sign(
-      { id: admin._id, role: 'admin', name: fullName || admin.email },
+      { id: admin._id, role: 'admin', name: fullName || admin.email, isSuperAdmin: admin.isSuperAdmin },
       process.env.JWT_SECRET,
     );
 
@@ -63,7 +65,25 @@ export class AdminService {
     return this.adminModel
       .find()
       .select('-password')
-      .sort({ createdAt: -1 })
+      .sort({ isSuperAdmin: -1, createdAt: 1 })
       .exec();
+  }
+
+  async softDelete(targetId: string, requesterId: string) {
+    const target = await this.adminModel.findById(targetId);
+    if (!target) throw new NotFoundException('Không tìm thấy tài khoản admin');
+    if (target.isSuperAdmin) throw new ForbiddenException('Không thể xóa tài khoản hệ thống');
+    if (String(target._id) === requesterId) throw new ForbiddenException('Không thể tự xóa tài khoản của mình');
+    target.isDeleted = true;
+    await target.save();
+    return { message: 'Đã đình chỉ tài khoản admin' };
+  }
+
+  async restore(targetId: string) {
+    const target = await this.adminModel.findById(targetId);
+    if (!target) throw new NotFoundException('Không tìm thấy tài khoản admin');
+    target.isDeleted = false;
+    await target.save();
+    return { message: 'Đã khôi phục tài khoản admin' };
   }
 }

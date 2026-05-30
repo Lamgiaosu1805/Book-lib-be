@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { AdminGuard } from 'src/auth/admin.guard';
 import { AuditLogService } from 'src/audit-log/audit-log.service';
+import { SuperAdminGuard } from 'src/auth/super-admin.guard';
 
 @Controller('admin')
 export class AdminController {
@@ -27,6 +28,28 @@ export class AdminController {
   @Get('list')
   listAdmins() {
     return this.adminService.findAll();
+  }
+
+  @UseGuards(SuperAdminGuard)
+  @Delete(':id')
+  async softDelete(@Param('id') id: string, @Req() req: any) {
+    const result = await this.adminService.softDelete(id, req.user.id);
+    await this.auditLogService.log(
+      { id: req.user.id, name: req.user.name },
+      'Đình chỉ admin', 'Quản trị viên', id,
+    );
+    return result;
+  }
+
+  @UseGuards(SuperAdminGuard)
+  @Patch(':id/restore')
+  async restore(@Param('id') id: string, @Req() req: any) {
+    const result = await this.adminService.restore(id);
+    await this.auditLogService.log(
+      { id: req.user.id, name: req.user.name },
+      'Khôi phục admin', 'Quản trị viên', id,
+    );
+    return result;
   }
 
   @UseGuards(AdminGuard)
