@@ -1,4 +1,4 @@
-import * as mongoose from 'mongoose';
+import { MongoClient } from 'mongodb';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 
@@ -6,16 +6,19 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/library';
 
-const col = (name: string) => mongoose.connection.collection(name);
-
 async function migrate() {
   console.log('🔌 Kết nối MongoDB...');
-  await mongoose.connect(MONGO_URI);
-  console.log('✅ Đã kết nối\n');
+  const client = new MongoClient(MONGO_URI);
+  await client.connect();
+
+  // Lấy tên database từ URI
+  const dbName = new URL(MONGO_URI.replace('mongodb://', 'http://')).pathname.slice(1).split('?')[0];
+  const db = client.db(dbName);
+  console.log(`✅ Đã kết nối database: "${dbName}"\n`);
 
   // ─── BOOKS ───────────────────────────────────────────────
   console.log('📚 Migration bảng books...');
-  const books = await col('books').updateMany(
+  const books = await db.collection('books').updateMany(
     { isDeleted: { $exists: false } },
     { $set: { isDeleted: false } },
   );
@@ -23,7 +26,7 @@ async function migrate() {
 
   // ─── CATEGORIES ──────────────────────────────────────────
   console.log('🏷️  Migration bảng categories...');
-  const cats = await col('categories').updateMany(
+  const cats = await db.collection('categories').updateMany(
     { isDeleted: { $exists: false } },
     { $set: { isDeleted: false } },
   );
@@ -31,15 +34,15 @@ async function migrate() {
 
   // ─── ADMINS ──────────────────────────────────────────────
   console.log('🔐 Migration bảng admins...');
-  const a1 = await col('admins').updateMany(
+  const a1 = await db.collection('admins').updateMany(
     { isDeleted: { $exists: false } },
     { $set: { isDeleted: false } },
   );
-  const a2 = await col('admins').updateMany(
+  const a2 = await db.collection('admins').updateMany(
     { isSuperAdmin: { $exists: false } },
     { $set: { isSuperAdmin: false } },
   );
-  const a3 = await col('admins').updateMany(
+  const a3 = await db.collection('admins').updateMany(
     { displayName: { $exists: false } },
     { $set: { displayName: '', saintName: '' } },
   );
@@ -49,15 +52,15 @@ async function migrate() {
 
   // ─── USERS ───────────────────────────────────────────────
   console.log('👤 Migration bảng users...');
-  const u1 = await col('users').updateMany(
+  const u1 = await db.collection('users').updateMany(
     { isDeleted: { $exists: false } },
     { $set: { isDeleted: false } },
   );
-  const u2 = await col('users').updateMany(
+  const u2 = await db.collection('users').updateMany(
     { googleId: { $exists: false } },
     { $set: { googleId: null } },
   );
-  const u3 = await col('users').updateMany(
+  const u3 = await db.collection('users').updateMany(
     { displayName: { $exists: false } },
     { $set: { displayName: '' } },
   );
@@ -69,7 +72,7 @@ async function migrate() {
   console.log('🎉 Migration hoàn tất!');
   console.log('─'.repeat(40));
 
-  await mongoose.disconnect();
+  await client.close();
   process.exit(0);
 }
 
