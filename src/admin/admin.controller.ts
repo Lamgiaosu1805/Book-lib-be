@@ -34,6 +34,12 @@ export class AdminController {
   }
 
   @UseGuards(AdminGuard)
+  @Get('me')
+  getMe(@Req() req: any) {
+    return this.adminService.findMe(req.user.id);
+  }
+
+  @UseGuards(AdminGuard)
   @Get('list')
   listAdmins() {
     return this.adminService.findAll();

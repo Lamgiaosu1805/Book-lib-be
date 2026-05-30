@@ -182,6 +182,14 @@ export class AdminService {
     };
   }
 
+  async findMe(adminId: string) {
+    const admin = await this.adminModel.findById(adminId).select('-password').exec();
+    if (!admin) throw new NotFoundException('Không tìm thấy tài khoản admin');
+    if (admin.isDeleted) throw new UnauthorizedException('Tài khoản đã bị đình chỉ');
+
+    return admin;
+  }
+
   async findAll() {
     return this.adminModel
       .find()
