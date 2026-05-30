@@ -114,6 +114,7 @@ export class BookController {
     await this.auditLogService.log(
       { id: req.user.id, name: req.user.name || 'Admin' },
       'Xóa mềm sách', 'Sách', id, book.title,
+      `Sách: ${book.title}`,
     );
     return result;
   }
@@ -125,6 +126,7 @@ export class BookController {
     await this.auditLogService.log(
       { id: req.user.id, name: req.user.name || 'Admin' },
       'Khôi phục sách', 'Sách', id, result.title,
+      `Sách: ${result.title}`,
     );
     return result;
   }
@@ -137,7 +139,7 @@ export class BookController {
     await this.auditLogService.log(
       { id: req.user.id, name: req.user.name || 'Admin' },
       'Xóa vĩnh viễn sách', 'Sách', id, book?.title || id,
-      'Đã xóa toàn bộ file PDF',
+      `Sách: ${book?.title || id}. Đã xóa toàn bộ file PDF`,
     );
     return result;
   }
