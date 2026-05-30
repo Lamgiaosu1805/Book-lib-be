@@ -11,7 +11,7 @@ async function migrate() {
   await mongoose.connect(MONGO_URI);
   console.log('✅ Đã kết nối\n');
 
-  const db = mongoose.connection.db;
+  const db = mongoose.connection.db!;
 
   // ─── BOOKS ───────────────────────────────────────────────
   console.log('📚 Migration bảng books...');
