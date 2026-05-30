@@ -20,7 +20,10 @@ export class UserService {
   async register(email: string, password: string) {
     const existed = await this.userModel.findOne({ email });
     if (existed) {
-      throw new BadRequestException('Email đã tồn tại');
+      if (existed.googleId) {
+        throw new BadRequestException('Email này đã được đăng ký bằng Google. Vui lòng đăng nhập bằng Google.');
+      }
+      throw new BadRequestException('Email này đã được đăng ký. Vui lòng đăng nhập.');
     }
     try {
       const hash = await bcrypt.hash(password, 10);
