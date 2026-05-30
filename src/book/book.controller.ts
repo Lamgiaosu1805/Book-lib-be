@@ -58,7 +58,7 @@ export class BookController {
       body.author, body.category, body.publishedYear, body.description,
     );
     await this.auditLogService.log(
-      { id: req.user.id, name: req.user.name },
+      { id: req.user.id, name: req.user.name || 'Admin' },
       'Thêm sách mới', 'Sách', String(book._id), body.title,
     );
     return book;
@@ -87,7 +87,7 @@ export class BookController {
   async updateBook(@Param('id') id: string, @Body() body: any, @Req() req: any) {
     const book = await this.bookService.update(id, body);
     await this.auditLogService.log(
-      { id: req.user.id, name: req.user.name },
+      { id: req.user.id, name: req.user.name || 'Admin' },
       'Sửa thông tin sách', 'Sách', id, book.title,
       `Cập nhật: ${Object.keys(body).join(', ')}`,
     );
@@ -100,7 +100,7 @@ export class BookController {
   async updateFile(@Param('id') id: string, @UploadedFile() file: any, @Req() req: any) {
     const book = await this.bookService.updateFile(id, file.path);
     await this.auditLogService.log(
-      { id: req.user.id, name: req.user.name },
+      { id: req.user.id, name: req.user.name || 'Admin' },
       'Tải lại file PDF', 'Sách', id, book.title,
     );
     return book;
@@ -112,7 +112,7 @@ export class BookController {
     const book = await this.bookService.getBookDetails(id);
     const result = await this.bookService.softDelete(id);
     await this.auditLogService.log(
-      { id: req.user.id, name: req.user.name },
+      { id: req.user.id, name: req.user.name || 'Admin' },
       'Xóa mềm sách', 'Sách', id, book.title,
     );
     return result;
@@ -123,7 +123,7 @@ export class BookController {
   async restoreBook(@Param('id') id: string, @Req() req: any) {
     const result = await this.bookService.restore(id);
     await this.auditLogService.log(
-      { id: req.user.id, name: req.user.name },
+      { id: req.user.id, name: req.user.name || 'Admin' },
       'Khôi phục sách', 'Sách', id, result.title,
     );
     return result;
@@ -135,7 +135,7 @@ export class BookController {
     const book = await this.bookService.getBookById(id);
     const result = await this.bookService.hardDelete(id);
     await this.auditLogService.log(
-      { id: req.user.id, name: req.user.name },
+      { id: req.user.id, name: req.user.name || 'Admin' },
       'Xóa vĩnh viễn sách', 'Sách', id, book?.title || id,
       'Đã xóa toàn bộ file PDF',
     );

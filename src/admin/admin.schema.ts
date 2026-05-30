@@ -18,6 +18,9 @@ export class Admin extends Document {
   @Prop({ default: '' })
   saintName: string;
 
+  @Prop({ unique: true, sparse: true })
+  username: string;
+
   @Prop({ default: false })
   isSuperAdmin: boolean;
 

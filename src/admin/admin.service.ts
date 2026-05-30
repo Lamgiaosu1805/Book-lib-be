@@ -11,6 +11,32 @@ import { Model } from 'mongoose';
 import * as jwt from 'jsonwebtoken';
 import * as bcrypt from 'bcrypt';
 
+function toSlug(str: string): string {
+  return str
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+// "Nghiêm Khắc Lâm" → "lamnk"  (chỉ dùng displayName, saintName là tiền tố tôn giáo)
+function buildUsernameBase(saintName: string, displayName: string): string {
+  const parts = displayName.trim().split(/\s+/).filter(Boolean);
+
+  if (parts.length === 0) {
+    return toSlug(saintName) || 'admin';
+  }
+
+  const ten = toSlug(parts[parts.length - 1]);
+  const initials = parts
+    .slice(0, -1)
+    .map((p) => toSlug(p).charAt(0))
+    .join('');
+
+  return ten + initials || 'admin';
+}
+
 @Injectable()
 export class AdminService {
   constructor(
@@ -18,9 +44,23 @@ export class AdminService {
     private adminModel: Model<Admin>,
   ) {}
 
-  async login(email: string, password: string) {
-    const admin = await this.adminModel.findOne({ email });
+  private async generateUniqueUsername(base: string): Promise<string> {
+    if (!base) base = 'admin';
+    let username = base;
+    let counter = 1;
+    while (await this.adminModel.exists({ username })) {
+      username = `${base}${counter}`;
+      counter++;
+    }
+    return username;
+  }
+
+  async login(identifier: string, password: string) {
+    const admin = await this.adminModel.findOne({
+      $or: [{ email: identifier }, { username: identifier }],
+    });
     if (!admin) throw new UnauthorizedException('Không tìm thấy tài khoản admin');
+    if (admin.isDeleted) throw new UnauthorizedException('Tài khoản đã bị đình chỉ');
 
     const match = await bcrypt.compare(password, admin.password);
     if (!match) throw new UnauthorizedException('Sai mật khẩu');
@@ -42,12 +82,16 @@ export class AdminService {
     const existed = await this.adminModel.findOne({ email });
     if (existed) throw new BadRequestException('Email này đã được sử dụng');
 
+    const base = buildUsernameBase(saintName, displayName);
+    const username = await this.generateUniqueUsername(base);
+
     const hash = await bcrypt.hash(password, 10);
     const admin = await this.adminModel.create({
       email,
       password: hash,
       displayName,
       saintName,
+      username,
     });
 
     return {
@@ -55,6 +99,7 @@ export class AdminService {
       data: {
         id: admin._id,
         email: admin.email,
+        username: admin.username,
         displayName: admin.displayName,
         saintName: admin.saintName,
       },

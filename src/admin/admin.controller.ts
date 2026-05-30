@@ -12,8 +12,8 @@ export class AdminController {
   ) {}
 
   @Post('login')
-  login(@Body() body: { email: string; password: string }) {
-    return this.adminService.login(body.email, body.password);
+  login(@Body() body: { identifier: string; password: string }) {
+    return this.adminService.login(body.identifier, body.password);
   }
 
   @UseGuards(AdminGuard)
@@ -35,7 +35,7 @@ export class AdminController {
   async softDelete(@Param('id') id: string, @Req() req: any) {
     const result = await this.adminService.softDelete(id, req.user.id);
     await this.auditLogService.log(
-      { id: req.user.id, name: req.user.name },
+      { id: req.user.id, name: req.user.name || 'Admin' },
       'Đình chỉ admin', 'Quản trị viên', id,
     );
     return result;
@@ -46,7 +46,7 @@ export class AdminController {
   async restore(@Param('id') id: string, @Req() req: any) {
     const result = await this.adminService.restore(id);
     await this.auditLogService.log(
-      { id: req.user.id, name: req.user.name },
+      { id: req.user.id, name: req.user.name || 'Admin' },
       'Khôi phục admin', 'Quản trị viên', id,
     );
     return result;
