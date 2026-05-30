@@ -48,6 +48,18 @@ export class UserController {
   }
 
   @UseGuards(AuthGuard)
+  @Get('profile')
+  getProfile(@Req() req: any) {
+    return this.userService.getProfile(req.user.id);
+  }
+
+  @UseGuards(AuthGuard)
+  @Patch('profile/password')
+  changePassword(@Req() req: any, @Body() body: { oldPassword: string; newPassword: string }) {
+    return this.userService.changePassword(req.user.id, body.oldPassword, body.newPassword);
+  }
+
+  @UseGuards(AuthGuard)
   @Get('library')
   getMyLibrary(@Req() req: any) {
     return this.userService.getMyLibrary(req.user.id);

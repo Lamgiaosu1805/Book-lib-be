@@ -11,6 +11,8 @@ import {
   Header,
   StreamableFile,
   Req,
+  Patch,
+  Delete,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -24,7 +26,6 @@ import { AuthGuard } from 'src/auth/auth.guard';
 export class BookController {
   constructor(private readonly bookService: BookService) {}
 
-  @UseGuards(AuthGuard)
   @Get()
   async findAll(
     @Query('page') page: number = 1,
@@ -70,7 +71,6 @@ export class BookController {
     );
   }
 
-  @UseGuards(AuthGuard)
   @Get(':id/preview')
   @Header('Content-Type', 'application/pdf')
   async getPreview(@Param('id') id: string) {
@@ -84,9 +84,47 @@ export class BookController {
     return this.bookService.getFullBookStream(id, req.user);
   }
 
-  @UseGuards(AuthGuard)
   @Get(':id')
   async getBookDetails(@Param('id') id: string) {
     return this.bookService.getBookDetails(id);
+  }
+
+  @UseGuards(AdminGuard)
+  @Patch(':id')
+  async updateBook(@Param('id') id: string, @Body() body: any) {
+    return this.bookService.update(id, body);
+  }
+
+  @UseGuards(AdminGuard)
+  @Patch(':id/file')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: (req, file, cb) => {
+          const fullPath = join(
+            process.env.FILE_STORAGE_PATH || './uploads',
+            'full',
+          );
+          if (!fs.existsSync(fullPath))
+            fs.mkdirSync(fullPath, { recursive: true });
+          cb(null, fullPath);
+        },
+        filename: (req, file, cb) => {
+          cb(
+            null,
+            `${Date.now()}-${Math.round(Math.random() * 1e9)}${extname(file.originalname)}`,
+          );
+        },
+      }),
+    }),
+  )
+  async updateFile(@Param('id') id: string, @UploadedFile() file: any) {
+    return this.bookService.updateFile(id, file.path);
+  }
+
+  @UseGuards(AdminGuard)
+  @Delete(':id')
+  async deleteBook(@Param('id') id: string) {
+    return this.bookService.delete(id);
   }
 }

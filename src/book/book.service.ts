@@ -106,6 +106,51 @@ export class BookService {
     return book;
   }
 
+  async update(id: string, data: Partial<Book>) {
+    const book = await this.bookModel.findByIdAndUpdate(id, data, { new: true });
+    if (!book) throw new NotFoundException('Sách không tồn tại');
+    return book;
+  }
+
+  async updateFile(id: string, newFilePath: string): Promise<Book> {
+    const book = await this.bookModel.findById(id);
+    if (!book) throw new NotFoundException('Sách không tồn tại');
+
+    const absoluteFullPath = path.resolve(newFilePath);
+    const previewPath = absoluteFullPath.replace(
+      `${path.sep}full${path.sep}`,
+      `${path.sep}preview${path.sep}`,
+    );
+
+    const previewDir = path.dirname(previewPath);
+    if (!fs.existsSync(previewDir)) {
+      fs.mkdirSync(previewDir, { recursive: true });
+    }
+
+    try {
+      await execPromise(`pdftk "${absoluteFullPath}" cat 1 output "${previewPath}"`);
+    } catch (err) {
+      this.logger.error(`❌ PDFTK ERROR: ${err.message}`);
+      throw new InternalServerErrorException('Lỗi tạo bản xem trước PDF');
+    }
+
+    // Xóa file cũ
+    if (fs.existsSync(book.filePath)) fs.unlinkSync(book.filePath);
+    if (fs.existsSync(book.previewPath)) fs.unlinkSync(book.previewPath);
+
+    book.filePath = absoluteFullPath;
+    book.previewPath = previewPath;
+    return book.save();
+  }
+
+  async delete(id: string) {
+    const book = await this.bookModel.findByIdAndDelete(id);
+    if (!book) throw new NotFoundException('Sách không tồn tại');
+    if (fs.existsSync(book.filePath)) fs.unlinkSync(book.filePath);
+    if (fs.existsSync(book.previewPath)) fs.unlinkSync(book.previewPath);
+    return { message: 'Đã xóa sách thành công' };
+  }
+
   async getPreviewStream(id: string): Promise<StreamableFile> {
     const book = await this.bookModel.findById(id);
     if (!book || !fs.existsSync(book.previewPath))

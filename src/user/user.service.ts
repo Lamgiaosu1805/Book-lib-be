@@ -99,6 +99,22 @@ export class UserService {
     }
     return { message: 'Đã khôi phục tài khoản' };
   }
+  async getProfile(userId: string) {
+    const user = await this.userModel.findById(userId).select('-password').exec();
+    if (!user) throw new NotFoundException('Không tìm thấy người dùng');
+    return user;
+  }
+
+  async changePassword(userId: string, oldPassword: string, newPassword: string) {
+    const user = await this.userModel.findById(userId);
+    if (!user) throw new NotFoundException('Không tìm thấy người dùng');
+    const valid = await bcrypt.compare(oldPassword, user.password);
+    if (!valid) throw new BadRequestException('Mật khẩu cũ không đúng');
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+    return { message: 'Đổi mật khẩu thành công' };
+  }
+
   async getMyLibrary(userId: string) {
     const user = await this.userModel
       .findById(userId)
