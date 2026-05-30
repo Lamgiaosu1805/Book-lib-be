@@ -3,7 +3,7 @@ import { Document } from 'mongoose';
 
 @Schema({ timestamps: true })
 export class Admin extends Document {
-  @Prop({ unique: true, sparse: true })
+  @Prop()
   email?: string;
 
   @Prop({ required: true })
@@ -32,3 +32,11 @@ export class Admin extends Document {
 }
 
 export const AdminSchema = SchemaFactory.createForClass(Admin);
+
+AdminSchema.index(
+  { email: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { email: { $type: 'string' } },
+  },
+);

@@ -48,6 +48,14 @@ function generateTemporaryPassword(length = 12): string {
   return Array.from(bytes, (byte) => chars[byte % chars.length]).join('');
 }
 
+function validateAdminPassword(password: string): string | null {
+  if (!password || password.length < 6) return 'Mật khẩu mới phải có ít nhất 6 ký tự';
+  if (!/[A-Z]/.test(password)) return 'Mật khẩu mới phải có ít nhất 1 chữ hoa';
+  if (!/[0-9]/.test(password)) return 'Mật khẩu mới phải có ít nhất 1 chữ số';
+  if (!/[^A-Za-z0-9]/.test(password)) return 'Mật khẩu mới phải có ít nhất 1 ký tự đặc biệt';
+  return null;
+}
+
 @Injectable()
 export class AdminService {
   constructor(
@@ -70,11 +78,11 @@ export class AdminService {
     const admin = await this.adminModel.findOne({
       $or: [{ email: identifier }, { username: identifier }],
     });
-    if (!admin) throw new UnauthorizedException('Không tìm thấy tài khoản admin');
+    if (!admin) throw new UnauthorizedException('Sai tài khoản hoặc mật khẩu');
     if (admin.isDeleted) throw new UnauthorizedException('Tài khoản đã bị đình chỉ');
 
     const match = await bcrypt.compare(password, admin.password);
-    if (!match) throw new UnauthorizedException('Sai mật khẩu');
+    if (!match) throw new UnauthorizedException('Sai tài khoản hoặc mật khẩu');
 
     const fullName = [admin.saintName, admin.displayName].filter(Boolean).join(' ');
 
@@ -127,9 +135,8 @@ export class AdminService {
   }
 
   async changePassword(adminId: string, oldPassword: string, newPassword: string) {
-    if (!newPassword || newPassword.length < 6) {
-      throw new BadRequestException('Mật khẩu mới phải có ít nhất 6 ký tự');
-    }
+    const passwordError = validateAdminPassword(newPassword);
+    if (passwordError) throw new BadRequestException(passwordError);
 
     const admin = await this.adminModel.findById(adminId);
     if (!admin) throw new NotFoundException('Không tìm thấy tài khoản admin');

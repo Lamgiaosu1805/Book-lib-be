@@ -10,6 +10,14 @@ import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
 
+function validateUserPassword(password: string): string | null {
+  if (!password || password.length < 6) return 'Mật khẩu phải có ít nhất 6 ký tự';
+  if (!/[A-Z]/.test(password)) return 'Mật khẩu phải có ít nhất 1 chữ hoa';
+  if (!/[0-9]/.test(password)) return 'Mật khẩu phải có ít nhất 1 chữ số';
+  if (!/[^A-Za-z0-9]/.test(password)) return 'Mật khẩu phải có ít nhất 1 ký tự đặc biệt';
+  return null;
+}
+
 @Injectable()
 export class UserService {
   constructor(
@@ -18,6 +26,9 @@ export class UserService {
   ) {}
 
   async register(email: string, password: string) {
+    const passwordError = validateUserPassword(password);
+    if (passwordError) throw new BadRequestException(passwordError);
+
     const existed = await this.userModel.findOne({ email });
     if (existed) {
       if (existed.googleId) {
@@ -44,12 +55,12 @@ export class UserService {
     const user = await this.userModel.findOne({ email, isDeleted: false });
     if (!user) {
       throw new UnauthorizedException(
-        'Tài khoản không tồn tại hoặc đã bị đình chỉ',
+        'Sai tài khoản hoặc mật khẩu',
       );
     }
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
-      throw new UnauthorizedException('Sai mật khẩu');
+      throw new UnauthorizedException('Sai tài khoản hoặc mật khẩu');
     }
     const token = jwt.sign(
       { id: user._id, role: 'user' },
@@ -151,6 +162,9 @@ export class UserService {
   }
 
   async changePassword(userId: string, oldPassword: string, newPassword: string) {
+    const passwordError = validateUserPassword(newPassword);
+    if (passwordError) throw new BadRequestException(passwordError);
+
     const user = await this.userModel.findById(userId);
     if (!user) throw new NotFoundException('Không tìm thấy người dùng');
     const valid = await bcrypt.compare(oldPassword, user.password);

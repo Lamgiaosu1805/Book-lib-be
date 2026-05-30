@@ -16,7 +16,7 @@ export class AdminController {
     return this.adminService.login(body.identifier, body.password);
   }
 
-  @UseGuards(AdminGuard)
+  @UseGuards(SuperAdminGuard)
   @Post('create')
   createAdmin(
     @Body() body: { displayName: string; saintName: string },
