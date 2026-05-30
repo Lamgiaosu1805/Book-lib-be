@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -75,17 +76,18 @@ export class BookService {
     });
   }
 
-  async findAll(page: number = 1, limit: number = 10) {
+  async findAll(page: number = 1, limit: number = 10, status: 'active' | 'deleted' = 'active') {
+    const filter = status === 'deleted' ? { isDeleted: true } : { isDeleted: false };
     const skip = (page - 1) * limit;
     const [data, totalItems] = await Promise.all([
       this.bookModel
-        .find()
+        .find(filter)
         .select('-filePath -previewPath')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .exec(),
-      this.bookModel.countDocuments(),
+      this.bookModel.countDocuments(filter),
     ]);
     return {
       items: data,
@@ -99,11 +101,39 @@ export class BookService {
 
   async getBookDetails(id: string) {
     const book = await this.bookModel
-      .findById(id)
+      .findOne({ _id: id, isDeleted: false })
       .select('-filePath -previewPath')
       .exec();
     if (!book) throw new NotFoundException('Sách không tồn tại');
     return book;
+  }
+
+  async getBookById(id: string) {
+    return this.bookModel.findById(id).select('-filePath -previewPath').exec();
+  }
+
+  async softDelete(id: string) {
+    const book = await this.bookModel.findByIdAndUpdate(id, { isDeleted: true }, { new: true });
+    if (!book) throw new NotFoundException('Sách không tồn tại');
+    return book;
+  }
+
+  async restore(id: string) {
+    const book = await this.bookModel.findByIdAndUpdate(id, { isDeleted: false }, { new: true });
+    if (!book) throw new NotFoundException('Sách không tồn tại');
+    return book;
+  }
+
+  async hardDelete(id: string) {
+    const book = await this.bookModel.findById(id);
+    if (!book) throw new NotFoundException('Sách không tồn tại');
+    if (!book.isDeleted) {
+      throw new BadRequestException('Chỉ có thể xóa vĩnh viễn sách đã được xóa mềm trước đó');
+    }
+    if (fs.existsSync(book.filePath)) fs.unlinkSync(book.filePath);
+    if (fs.existsSync(book.previewPath)) fs.unlinkSync(book.previewPath);
+    await this.bookModel.findByIdAndDelete(id);
+    return { message: 'Đã xóa vĩnh viễn sách và toàn bộ file' };
   }
 
   async update(id: string, data: Partial<Book>) {
@@ -143,13 +173,6 @@ export class BookService {
     return book.save();
   }
 
-  async delete(id: string) {
-    const book = await this.bookModel.findByIdAndDelete(id);
-    if (!book) throw new NotFoundException('Sách không tồn tại');
-    if (fs.existsSync(book.filePath)) fs.unlinkSync(book.filePath);
-    if (fs.existsSync(book.previewPath)) fs.unlinkSync(book.previewPath);
-    return { message: 'Đã xóa sách thành công' };
-  }
 
   async getPreviewStream(id: string): Promise<StreamableFile> {
     const book = await this.bookModel.findById(id);

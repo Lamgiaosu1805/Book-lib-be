@@ -29,6 +29,9 @@ export class Book extends Document {
 
   @Prop({ required: true })
   previewPath: string;
+
+  @Prop({ default: false })
+  isDeleted: boolean;
 }
 
 export const BookSchema = SchemaFactory.createForClass(Book);

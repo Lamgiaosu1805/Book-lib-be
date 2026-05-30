@@ -44,8 +44,9 @@ export class BookController {
   async findAll(
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
+    @Query('status') status: 'active' | 'deleted' = 'active',
   ) {
-    return this.bookService.findAll(Number(page), Number(limit));
+    return this.bookService.findAll(Number(page), Number(limit), status);
   }
 
   @Post('upload')
@@ -107,12 +108,36 @@ export class BookController {
 
   @UseGuards(AdminGuard)
   @Delete(':id')
-  async deleteBook(@Param('id') id: string, @Req() req: any) {
+  async softDeleteBook(@Param('id') id: string, @Req() req: any) {
     const book = await this.bookService.getBookDetails(id);
-    const result = await this.bookService.delete(id);
+    const result = await this.bookService.softDelete(id);
     await this.auditLogService.log(
       { id: req.user.id, name: req.user.name },
-      'Xóa sách', 'Sách', id, book.title,
+      'Xóa mềm sách', 'Sách', id, book.title,
+    );
+    return result;
+  }
+
+  @UseGuards(AdminGuard)
+  @Patch(':id/restore')
+  async restoreBook(@Param('id') id: string, @Req() req: any) {
+    const result = await this.bookService.restore(id);
+    await this.auditLogService.log(
+      { id: req.user.id, name: req.user.name },
+      'Khôi phục sách', 'Sách', id, result.title,
+    );
+    return result;
+  }
+
+  @UseGuards(AdminGuard)
+  @Delete(':id/permanent')
+  async hardDeleteBook(@Param('id') id: string, @Req() req: any) {
+    const book = await this.bookService.getBookById(id);
+    const result = await this.bookService.hardDelete(id);
+    await this.auditLogService.log(
+      { id: req.user.id, name: req.user.name },
+      'Xóa vĩnh viễn sách', 'Sách', id, book?.title || id,
+      'Đã xóa toàn bộ file PDF',
     );
     return result;
   }
