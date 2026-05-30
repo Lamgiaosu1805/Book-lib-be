@@ -54,6 +54,12 @@ export class UserController {
   }
 
   @UseGuards(AuthGuard)
+  @Patch('profile')
+  updateProfile(@Req() req: any, @Body() body: { displayName: string }) {
+    return this.userService.updateProfile(req.user.id, body.displayName);
+  }
+
+  @UseGuards(AuthGuard)
   @Patch('profile/password')
   changePassword(@Req() req: any, @Body() body: { oldPassword: string; newPassword: string }) {
     return this.userService.changePassword(req.user.id, body.oldPassword, body.newPassword);

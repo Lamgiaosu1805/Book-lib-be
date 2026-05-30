@@ -99,7 +99,7 @@ export class UserService {
     }
     return { message: 'Đã khôi phục tài khoản' };
   }
-  async loginWithGoogle(profile: { email: string; googleId: string }): Promise<string> {
+  async loginWithGoogle(profile: { email: string; googleId: string; displayName: string }): Promise<string> {
     let user = await this.userModel.findOne({ email: profile.email });
 
     if (!user) {
@@ -108,6 +108,7 @@ export class UserService {
         email: profile.email,
         password: randomPassword,
         googleId: profile.googleId,
+        displayName: profile.displayName,
       });
     } else {
       if (user.isDeleted) {
@@ -115,6 +116,7 @@ export class UserService {
       }
       if (!user.googleId) {
         user.googleId = profile.googleId;
+        if (!user.displayName) user.displayName = profile.displayName;
         await user.save();
       }
     }
@@ -128,6 +130,16 @@ export class UserService {
 
   async getProfile(userId: string) {
     const user = await this.userModel.findById(userId).select('-password').exec();
+    if (!user) throw new NotFoundException('Không tìm thấy người dùng');
+    return user;
+  }
+
+  async updateProfile(userId: string, displayName: string) {
+    const user = await this.userModel.findByIdAndUpdate(
+      userId,
+      { displayName },
+      { new: true },
+    ).select('-password');
     if (!user) throw new NotFoundException('Không tìm thấy người dùng');
     return user;
   }

@@ -12,6 +12,9 @@ export class User extends Document {
   @Prop({ default: false })
   isDeleted: boolean;
 
+  @Prop({ default: '' })
+  displayName: string;
+
   @Prop({ default: null })
   googleId: string;
 
