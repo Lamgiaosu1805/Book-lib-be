@@ -3,8 +3,8 @@ import { Document } from 'mongoose';
 
 @Schema({ timestamps: true })
 export class Admin extends Document {
-  @Prop({ unique: true, required: true })
-  email: string;
+  @Prop({ unique: true, sparse: true })
+  email?: string;
 
   @Prop({ required: true })
   password: string;
@@ -26,6 +26,9 @@ export class Admin extends Document {
 
   @Prop({ default: false })
   isDeleted: boolean;
+
+  @Prop({ default: false })
+  mustChangePassword: boolean;
 }
 
 export const AdminSchema = SchemaFactory.createForClass(Admin);

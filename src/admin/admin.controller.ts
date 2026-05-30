@@ -19,15 +19,35 @@ export class AdminController {
   @UseGuards(AdminGuard)
   @Post('create')
   createAdmin(
-    @Body() body: { email: string; password: string; displayName: string; saintName: string },
+    @Body() body: { displayName: string; saintName: string },
   ) {
-    return this.adminService.create(body.email, body.password, body.displayName, body.saintName);
+    return this.adminService.create(body.displayName, body.saintName);
+  }
+
+  @UseGuards(AdminGuard)
+  @Patch('change-password')
+  changePassword(
+    @Req() req: any,
+    @Body() body: { oldPassword: string; newPassword: string },
+  ) {
+    return this.adminService.changePassword(req.user.id, body.oldPassword, body.newPassword);
   }
 
   @UseGuards(AdminGuard)
   @Get('list')
   listAdmins() {
     return this.adminService.findAll();
+  }
+
+  @UseGuards(SuperAdminGuard)
+  @Patch(':id/reset-password')
+  async resetPassword(@Param('id') id: string, @Req() req: any) {
+    const result = await this.adminService.resetPassword(id);
+    await this.auditLogService.log(
+      { id: req.user.id, name: req.user.name || 'Admin' },
+      'Reset mật khẩu admin', 'Quản trị viên', id,
+    );
+    return result;
   }
 
   @UseGuards(SuperAdminGuard)
