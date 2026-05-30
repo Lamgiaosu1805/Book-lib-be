@@ -77,7 +77,7 @@ export class BookService {
   }
 
   async findAll(page: number = 1, limit: number = 10, status: 'active' | 'deleted' = 'active') {
-    const filter = status === 'deleted' ? { isDeleted: true } : { isDeleted: false };
+    const filter = status === 'deleted' ? { isDeleted: true } : { isDeleted: { $ne: true } };
     const skip = (page - 1) * limit;
     const [data, totalItems] = await Promise.all([
       this.bookModel
@@ -101,7 +101,7 @@ export class BookService {
 
   async getBookDetails(id: string) {
     const book = await this.bookModel
-      .findOne({ _id: id, isDeleted: false })
+      .findOne({ _id: id, isDeleted: { $ne: true } })
       .select('-filePath -previewPath')
       .exec();
     if (!book) throw new NotFoundException('Sách không tồn tại');
